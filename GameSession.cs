@@ -13,7 +13,7 @@ namespace MatimaticServer
         public bool PlacedThisTurn { get; set; }
     }
 
-    public class GameHub
+    public class GameSession
     {
         private readonly ConcurrentDictionary<string, PlayerState> _players = new();
         private readonly List<int> _deck = new();
@@ -33,6 +33,17 @@ namespace MatimaticServer
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
+
+        public event Action? OnEnded;
+
+        public bool CanJoin
+        {
+            get
+            {
+                lock (_players)
+                    return !_gameStarted && _players.Count < MaxPlayers;
+            }
+        }
 
         public async Task HandleConnection(WebSocket socket)
         {
@@ -265,6 +276,7 @@ namespace MatimaticServer
                 .ToList();
 
             await BroadcastAsync(MessageType.GameOver, new GameOverPayload { Results = results });
+            await Task.Delay(3000);
             Reset();
         }
 
@@ -277,6 +289,7 @@ namespace MatimaticServer
             _currentCardValue = 0;
             _deck.Clear();
             _players.Clear();
+            OnEnded?.Invoke();
         }
 
         private void BuildDeck()

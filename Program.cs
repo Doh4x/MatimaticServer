@@ -3,7 +3,7 @@ using MatimaticServer;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-var hub = new GameHub();
+var sessionManager = new SessionManager();
 
 app.UseWebSockets(new WebSocketOptions
 {
@@ -19,7 +19,7 @@ app.Map("/matematico/ws", async context =>
     }
 
     var socket = await context.WebSockets.AcceptWebSocketAsync();
-    await hub.HandleConnection(socket);
+    await sessionManager.HandleConnection(socket);
 });
 
 app.Run();
