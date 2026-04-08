@@ -1,0 +1,7 @@
+services:
+  matematico-server:
+    build: .
+    container_name: matematico-server
+    ports:
+      - "8090:8080"
+    restart: unless-stopped
