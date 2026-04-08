@@ -51,7 +51,6 @@ namespace MatimaticServer
                     {
                         var payload = Deserialize<JoinPayload>(msg.Payload);
                         if (payload == null) continue;
-
                         nickname = await HandleJoin(socket, payload.Nickname);
                     }
                     else if (msg.Type == MessageType.PlaceCard && nickname != null)
@@ -67,8 +66,14 @@ namespace MatimaticServer
                 if (nickname != null)
                 {
                     _players.TryRemove(nickname, out _);
-                    await BroadcastLobbyUpdate(LobbySeconds);
+                    if (!_gameStarted)
+                        await BroadcastLobbyUpdate(LobbySeconds);
                 }
+
+                if (socket.State == WebSocketState.Open)
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+
+                socket.Dispose();
             }
         }
 
@@ -78,7 +83,7 @@ namespace MatimaticServer
             {
                 if (_gameStarted || _players.Count >= MaxPlayers || _players.ContainsKey(nickname))
                 {
-                    _ = SendAsync(socket, MessageType.Error, "Нельзя присоединиться");
+                    _ = SendSafeAsync(socket, MessageType.Error, "Нельзя присоединиться");
                     return null;
                 }
 
@@ -94,7 +99,17 @@ namespace MatimaticServer
             if (!_lobbyCountdownStarted)
             {
                 _lobbyCountdownStarted = true;
-                _ = Task.Run(LobbyCountdown);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await LobbyCountdown();
+                    }
+                    catch
+                    {
+                        Reset();
+                    }
+                });
             }
 
             return nickname;
@@ -245,6 +260,18 @@ namespace MatimaticServer
                 .ToList();
 
             await BroadcastAsync(MessageType.GameOver, new GameOverPayload { Results = results });
+            Reset();
+        }
+
+        private void Reset()
+        {
+            _gameStarted = false;
+            _lobbyCountdownStarted = false;
+            _currentCardIndex = 0;
+            _turnNumber = 0;
+            _currentCardValue = 0;
+            _deck.Clear();
+            _players.Clear();
         }
 
         private void BuildDeck()
@@ -278,9 +305,20 @@ namespace MatimaticServer
         {
             var tasks = _players.Values
                 .Where(p => p.Socket.State == WebSocketState.Open)
-                .Select(p => SendAsync(p.Socket, type, payload));
+                .Select(p => SendSafeAsync(p.Socket, type, payload));
 
             await Task.WhenAll(tasks);
+        }
+
+        private static async Task SendSafeAsync<T>(WebSocket socket, MessageType type, T payload)
+        {
+            try
+            {
+                await SendAsync(socket, type, payload);
+            }
+            catch
+            {
+            }
         }
 
         private static async Task SendAsync<T>(WebSocket socket, MessageType type, T payload)
