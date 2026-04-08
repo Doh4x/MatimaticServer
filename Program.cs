@@ -10,7 +10,7 @@ app.UseWebSockets(new WebSocketOptions
     KeepAliveInterval = TimeSpan.FromSeconds(30)
 });
 
-app.Map("/ws", async context =>
+app.Map("/matematico/ws", async context =>
 {
     if (!context.WebSockets.IsWebSocketRequest)
     {
