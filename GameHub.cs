@@ -158,6 +158,7 @@ namespace MatimaticServer
                 });
 
                 await WaitForMoves();
+                await BroadcastAsync(MessageType.TurnTimeout, new { Turn = _turnNumber });
             }
 
             await FinishGame();

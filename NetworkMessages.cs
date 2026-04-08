@@ -8,6 +8,7 @@
         CardDealt,
         PlaceCard,
         PlayerMoved,
+        TurnTimeout,
         GameOver,
         Error
     }
