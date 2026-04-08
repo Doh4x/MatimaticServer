@@ -158,6 +158,7 @@ namespace MatimaticServer
                 });
 
                 await WaitForMoves();
+                await AutoPlaceForIdlePlayers();
                 await BroadcastAsync(MessageType.TurnTimeout, new { Turn = _turnNumber });
             }
 
@@ -178,6 +179,35 @@ namespace MatimaticServer
             }
         }
 
+        private async Task AutoPlaceForIdlePlayers()
+        {
+            var rnd = new Random();
+            foreach (var player in _players.Values)
+            {
+                if (player.PlacedThisTurn) continue;
+
+                var empty = new List<(int Row, int Col)>();
+                for (int r = 0; r < 5; r++)
+                    for (int c = 0; c < 5; c++)
+                        if (!player.Grid[r][c].HasValue)
+                            empty.Add((r, c));
+
+                if (empty.Count == 0) continue;
+
+                var pos = empty[rnd.Next(empty.Count)];
+                player.Grid[pos.Row][pos.Col] = _currentCardValue;
+                player.PlacedThisTurn = true;
+
+                await BroadcastAsync(MessageType.PlayerMoved, new PlayerMovedPayload
+                {
+                    Nickname = player.Nickname,
+                    Row = pos.Row,
+                    Col = pos.Col,
+                    CardValue = _currentCardValue
+                });
+            }
+        }
+
         private async Task HandlePlaceCard(string nickname, PlaceCardPayload payload)
         {
             if (!_players.TryGetValue(nickname, out var player)) return;
@@ -185,6 +215,8 @@ namespace MatimaticServer
             lock (player)
             {
                 if (player.PlacedThisTurn) return;
+                if (!_gameStarted) return;
+                if (payload.Row < 0 || payload.Row > 4 || payload.Col < 0 || payload.Col > 4) return;
                 if (player.Grid[payload.Row][payload.Col].HasValue) return;
 
                 player.Grid[payload.Row][payload.Col] = _currentCardValue;
