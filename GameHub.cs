@@ -29,6 +29,11 @@ namespace MatimaticServer
         private const int TurnSeconds = 10;
         private const int TotalTurns = 25;
 
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
         public async Task HandleConnection(WebSocket socket)
         {
             string? nickname = null;
@@ -326,10 +331,10 @@ namespace MatimaticServer
             var msg = new NetworkMessage
             {
                 Type = type,
-                Payload = JsonSerializer.Serialize(payload)
+                Payload = JsonSerializer.Serialize(payload, JsonOptions)
             };
 
-            byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(msg));
+            byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(msg, JsonOptions));
             await socket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
