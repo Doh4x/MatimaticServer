@@ -108,26 +108,19 @@ namespace MatimaticServer
                     Nickname = nickname,
                     Socket = socket
                 };
+
+                if (!_lobbyCountdownStarted)
+                {
+                    _lobbyCountdownStarted = true;
+                    _ = Task.Run(async () =>
+                    {
+                        try { await LobbyCountdown(); }
+                        catch { Reset(); }
+                    });
+                }
             }
 
             await BroadcastLobbyUpdate(LobbySeconds);
-
-            if (!_lobbyCountdownStarted)
-            {
-                _lobbyCountdownStarted = true;
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await LobbyCountdown();
-                    }
-                    catch
-                    {
-                        Reset();
-                    }
-                });
-            }
-
             return nickname;
         }
 
